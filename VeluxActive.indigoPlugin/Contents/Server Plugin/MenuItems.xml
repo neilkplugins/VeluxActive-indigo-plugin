@@ -1,0 +1,6 @@
+<MenuItems>
+	<MenuItem id="dumprates">
+        <Name>Write Config Information to the Event Log for Refresh Tokens</Name>
+        <CallbackMethod>logDumpTokens</CallbackMethod>
+    </MenuItem>
+</MenuItems>

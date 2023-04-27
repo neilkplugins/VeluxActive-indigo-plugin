@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<Devices>
+	<!-- Define Velux Devices -->
+<Device type="dimmer" subType="kDimmerDeviceSubType.Blind" id="velux_blind">
+    <Name>Velux Active Blind</Name>
+            <ConfigUI>
+
+			<Field id="home_id" type="menu" >
+                <Label>Select Home</Label>
+                <List class="self" filter="" method="getHomeID" dynamicReload="true"/>
+            </Field>
+			<Field id="blind_id" type="menu" >
+                <Label>Select Blind</Label>
+                <List class="self" filter="" method="getBlindID" dynamicReload="true"/>
+            </Field>
+            </ConfigUI>
+</Device>
+</Devices>
