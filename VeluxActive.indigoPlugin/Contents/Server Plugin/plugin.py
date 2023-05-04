@@ -84,8 +84,8 @@ class Plugin(indigo.PluginBase):
         device.stateListOrDisplayStateIdChanged()
         self.debugLog("Updating Velux Device "+device.name)
         # Check access token freshness and refresh if needed
-        if not token_check_valid(self):
-            refresh_token(self)
+        if not self.token_check_valid():
+            self.refresh_token()
         # Update address field for UI if it has changed or is blank
         if 'address' in device.pluginProps:
             if device.pluginProps['address'] != device.pluginProps['blind_id']:
@@ -97,32 +97,11 @@ class Plugin(indigo.PluginBase):
             newProps['address'] = device.pluginProps['blind_id']
             device.replacePluginPropsOnServer(newProps)
         self.debugLog("Getting device state")
-        self.debugLog("Access Token is "+ self.pluginPrefs['access_token'])
         self.debugLog("Home ID is "+ device.pluginProps['home_id'])
         self.debugLog("Blind ID is "+ device.pluginProps['blind_id'])
 
 
-        url = 'https://app.velux-active.com/api/homestatus'
-
-        data = {
-            'access_token': self.pluginPrefs['access_token'],
-            'home_id': device.pluginProps['home_id']
-        }
-        self.debugLog(data)
-        try:
-            response = requests.post(url, data=data)
-            response.raise_for_status()
-        except requests.exceptions.HTTPError as err:
-            self.debugLog("HTTP Error when getting device information from Velux")
-        except Exception as err:
-            self.debugLog("Other error when getting device information Velux")
-
-        if response.status_code == 200:
-            self.debugLog("Got Velux device update for "+device.name)
-        else:
-            self.debugLog('Error getting device status:' + response.text)
-            return
-        response_json = response.json()
+        response_json = self.get_home_data(device.pluginProps['home_id'])
 
         for modules in response_json['body']['home']['modules']:
             if modules['id']==device.pluginProps['blind_id']:
@@ -131,18 +110,105 @@ class Plugin(indigo.PluginBase):
                 device.updateStateOnServer(key='brightnessLevel', value=modules['current_position'])
 
         return
-        #
-        #
-        #         device_states = []
-        #
-        #
-        #         except Exception as e:
-        #             self.errorLog("Failed to complete updates for Velux device " + device.name)
-        #             self.debugLog(e)
-        #             self.debugLog(payload_json)
-        #             device.setErrorStateOnServer('API Error')
-        #
-        # return
+
+    def token_check_valid(self):
+        # Check if the access token needs to be refreshed, default expiry is 3 hours
+        time_now_with_buffer = datetime.now() + timedelta(minutes=5)
+        expiry_time = datetime.strptime(self.pluginPrefs['access_token_expires'], '%Y-%m-%d %H:%M:%S.%f')
+        if expiry_time > time_now_with_buffer:
+            self.debugLog("Time remaining on token is " + str((expiry_time - time_now_with_buffer)))
+            return True
+        else:
+            self.debugLog("Refresh AccessToken Now - 5 Minutes or less remaining valid")
+            return False
+        return
+
+
+    def refresh_token(self):
+        expiry_time = datetime.strptime(self.pluginPrefs['access_token_expires'], '%Y-%m-%d %H:%M:%S.%f')
+        if expiry_time < datetime.now():
+            self.debugLog("Token has already expired - Re-Autenticating")
+            self.reAutheticate()
+            return
+        self.debugLog("Refreshing Access token")
+        url = "https://app.velux-active.com/oauth2/token"
+
+        payload = {
+            'grant_type': 'refresh_token',
+            'client_id': CLIENT_ID,
+            'client_secret': CLIENT_SECRET,
+            'refresh_token': self.pluginPrefs['refresh_token']
+        }
+        headers = {
+            'Content-Type': 'application/json'
+        }
+        now = datetime.now()
+        try:
+            response = requests.request("POST", url, headers=headers, data=payload)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            self.debugLog("HTTP Error when refreshing token")
+        except Exception as err:
+            self.debugLog("Other error when refreshing token")
+        elapsed = now + response.elapsed
+
+        response_json = response.json()
+        if response.status_code != 200:
+            self.errorLog("Failed to Refresh Authentication Token, Check Password and Account Name")
+            return False
+        else:
+            self.pluginPrefs['access_token'] = response_json['access_token']
+            self.pluginPrefs['access_token_expires'] = str(elapsed + timedelta(seconds=10800))
+            self.debugLog("Access Token is " + self.pluginPrefs['token'])
+            self.debugLog("Access Token Expiry is " + str(self.pluginPrefs['access_token_expires']))
+            return True
+
+
+    def get_home_data(self, home_id):
+        stored_home_status = json.loads(self.pluginPrefs['stored_home_status'])
+        stored_update_time = datetime.strptime(stored_home_status[home_id][0], '%Y-%m-%d %H:%M:%S.%f')
+        time_now_plus_refresh = datetime.now()
+        difference_in_seconds = (time_now_plus_refresh-stored_update_time).seconds
+        self.debugLog("difference is "+str(difference_in_seconds))
+        if home_id in stored_home_status:
+            if difference_in_seconds < int(self.pluginPrefs['refresh_frequency']):
+                self.debugLog("No need to refresh API data")
+                #return the stored home status json, don't make a new api call as this is still fresh
+                return stored_home_status[home_id][1]
+            else:
+                self.debugLog("Making new API call")
+
+        url = 'https://app.velux-active.com/api/homestatus'
+
+        data = {
+            'access_token': self.pluginPrefs['access_token'],
+            'home_id': home_id
+        }
+        self.debugLog(data)
+        now = datetime.now()
+
+        try:
+            response = requests.post(url, data=data)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            self.debugLog("HTTP Error when getting homestatus information from Velux")
+        except Exception as err:
+            self.debugLog("Other error when getting homestatus information Velux")
+
+        if response.status_code == 200:
+            self.debugLog("Got Velux homestatus update for home" + home_id)
+        else:
+            self.debugLog('Error getting home status:' + response.text)
+            return
+        elapsed = now + response.elapsed
+        response_json = response.json()
+
+        stored_home_status = { home_id: [str(elapsed), response_json]}
+        self.pluginPrefs['stored_home_status']=json.dumps(stored_home_status)
+
+
+        return response_json
+
 
 
 
@@ -194,20 +260,26 @@ class Plugin(indigo.PluginBase):
             errorsDict['velux_password'] = "Failed to Authenticate with Velux Servers, Check Password and Account Name"
             return (False, valuesDict, errorsDict)
 
-        self.pluginPrefs['access_token'] = response_json['access_token']
-        self.pluginPrefs['refresh_token'] = response_json['refresh_token']
-        self.pluginPrefs['access_token_expires'] = str(elapsed + timedelta(seconds=10800))
-        indigo.server.savePluginPrefs
+        #self.pluginPrefs['access_token'] = response_json['access_token']
+        #self.pluginPrefs['refresh_token'] = response_json['refresh_token']
+
+        access_token_expires = str(elapsed + timedelta(seconds=10800))
+        valuesDict['access_token']=response_json['access_token']
+        valuesDict['refresh_token']=response_json['refresh_token']
+        valuesDict['access_token']=response_json['access_token']
+        valuesDict['access_token_expires']=access_token_expires
+
+
 
         self.debugLog("Access Token is " + response_json['access_token'])
         self.debugLog("Refresh Token is " + response_json['refresh_token'])
-        self.debugLog("Expiry is " + str(self.pluginPrefs['access_token_expires']))
+        self.debugLog("Expiry is " + str(access_token_expires))
 
 
         indigo.server.log("Showing Velux Active Token Status after Config")
         indigo.server.log("Access Token is " + self.pluginPrefs['access_token'])
         indigo.server.log("Refresh Token is " + self.pluginPrefs['refresh_token'])
-        indigo.server.log("Expiry is " + str(self.pluginPrefs['access_token_expires']))
+        indigo.server.log("Expiry is " + str(access_token_expires))
         self.debugLog("Exit Dict")
         self.debugLog(valuesDict)
         return (True, valuesDict)
@@ -217,7 +289,6 @@ class Plugin(indigo.PluginBase):
     def getHomeID(self, filter="", valuesDict=None, typeId="", targetId=0):
         self.debugLog("Getting homeID via API")
         home_list = []
-        home_array = []
         url = 'https://app.velux-active.com/api/gethomedata'
 
         data = {
@@ -292,50 +363,46 @@ class Plugin(indigo.PluginBase):
 
         return
 
-def token_check_valid(self):
-    # Check if the access token needs to be refreshed, default expiry is 3 hours
-    time_now = datetime.now() + timedelta(minutes=5)
-    expiry_time = datetime.strptime(self.pluginPrefs['access_token_expires'], '%Y-%m-%d %H:%M:%S.%f')
-    if expiry_time > time_now:
-        self.debugLog("Time remaining on token is " + str((expiry_time - time_now)))
-        return True
-    else:
-        self.debugLog("Refresh AccessToken Now - 5 Minutes or less remaining valid")
-        return False
-    return
+    def reAutheticate(self):
+        url = "https://app.velux-active.com/oauth2/token"
+        data = {
+            'grant_type': 'password',
+            'client_id': CLIENT_ID,
+            'client_secret': CLIENT_SECRET,
+            'username': self.pluginPrefs['velux_account'],
+            'password': self.pluginPrefs['velux_password'],
+            'user_prefix': 'velux'
+        }
+        self.debugLog(data)
+        now = datetime.now()
+        try:
+            response = requests.post(url, data=data)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            self.debugLog("HTTP Error when authenticating to Velux")
+        except Exception as err:
+            self.debugLog("Other error when authenticating to Velux")
+        self.debugLog(response)
+        response_json = response.json()
+        elapsed = now + response.elapsed
+        self.debugLog(response_json)
 
-def refresh_token(self):
-    self.debugLog("Refreshing Access token")
-    url = "https://app.velux-active.com/oauth2/token"
+        if response.status_code != 200:
+            self.errorLog("Failed to ReAuthenticate with Velux Servers, Check Password and Account Name")
+            return
 
-    payload = {
-    'grant_type': 'refresh_token',
-    'client_id': CLIENT_ID,
-    'client_secret': CLIENT_SECRET,
-    'refresh_token': self.pluginPrefs['refresh_token']
-    }
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    now = datetime.now()
-    try:
-        response = requests.request("POST", url, headers=headers, data=payload)
-        response.raise_for_status()
-    except requests.exceptions.HTTPError as err:
-        self.debugLog("HTTP Error when refreshing token")
-    except Exception as err:
-        self.debugLog("Other error when refreshing token")
-    elapsed = now + response.elapsed
-
-    response_json = response.json()
-    if response.status_code != 200:
-        self.errorLog("Failed to Refresh Authentication Token, Check Password and Account Name")
-        errorsDict = indigo.Dict()
-        errorsDict['bright_password'] = "Failed to Refresh Authentication Token, Check Password and Account Name"
-        return False
-    else:
         self.pluginPrefs['access_token'] = response_json['access_token']
-        self.pluginPrefs['access_token_expires'] = str(elapsed + timedelta(seconds=10800))
-        self.debugLog("Access Token is " + self.pluginPrefs['token'])
-        self.debugLog("Access Token Expiry is " + str(self.pluginPrefs['access_token_expires']))
-        return True
+        self.pluginPrefs['refresh_token'] = response_json['refresh_token']
+
+        access_token_expires = str(elapsed + timedelta(seconds=10800))
+
+        self.pluginPrefs['access_token_expires'] = access_token_expires
+
+        self.debugLog("Access Token is " + response_json['access_token'])
+        self.debugLog("Refresh Token is " + response_json['refresh_token'])
+        self.debugLog("Expiry is " + str(access_token_expires))
+
+        return
+
+
+

@@ -3,4 +3,8 @@
         <Name>Write Config Information to the Event Log for Refresh Tokens</Name>
         <CallbackMethod>logDumpTokens</CallbackMethod>
     </MenuItem>
+    <MenuItem id="reauthenticate">
+    <Name>Re-authenticate with Velux Active</Name>
+        <CallbackMethod>reAutheticate</CallbackMethod>
+</MenuItem>
 </MenuItems>

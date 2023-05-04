@@ -14,5 +14,14 @@
                 <List class="self" filter="" method="getBlindID" dynamicReload="true"/>
             </Field>
             </ConfigUI>
+<States>
+
+        <State id="homestatus_refresh" type="textfield">
+			<ValueType>String</ValueType>
+			<TriggerLabel>Last homestatus API Update</TriggerLabel>
+            <ControlPageLabel>Last homestatus API Updated</ControlPageLabel>
+		</State>
+    </States>
 </Device>
+
 </Devices>

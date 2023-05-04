@@ -23,7 +23,12 @@
 		<Label>Enable debugging:</Label>
 		<Description>(not recommended) and requires plugin restart</Description>
 	</Field>
-	<!--Hidden Controls-->
-
-
+	<!--Hidden Controls used to store access tokens and expiry time-->
+	<Field id="access_token" type="textfield" defaultValue="" hidden="True">
+	</Field>
+<Field id="refresh_token" type="textfield" defaultValue="" hidden="True">
+	</Field><Field id="access_token_expires" type="textfield" defaultValue="" hidden="True">
+	</Field>
+	<Field id="stored_home_status" type="textfield" defaultValue="" hidden="True">
+	</Field>
 </PluginConfig>
