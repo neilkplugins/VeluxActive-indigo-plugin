@@ -83,6 +83,15 @@ class Plugin(indigo.PluginBase):
     def update(self, device):
         device.stateListOrDisplayStateIdChanged()
         self.debugLog("Updating Velux Device "+device.name)
+        # Check if bridge ID is set, if not update it
+        if 'bridge' not in device.pluginProps:
+            try:
+                newProps = device.pluginProps
+                newProps['bridge'] = self.getBridge(device.pluginProps['home_id'],device.pluginProps['blind_id'])
+                device.replacePluginPropsOnServer(newProps)
+            except:
+                self.debugLog("Blind ID Not yet Set")
+                return
         # Check access token freshness and refresh if needed
         if not self.token_check_valid():
             self.refresh_token()
@@ -99,6 +108,7 @@ class Plugin(indigo.PluginBase):
         self.debugLog("Getting device state")
         self.debugLog("Home ID is "+ device.pluginProps['home_id'])
         self.debugLog("Blind ID is "+ device.pluginProps['blind_id'])
+        self.debugLog("Bridge ID is " + device.pluginProps['bridge'])
 
 
         response_json = self.get_home_data(device.pluginProps['home_id'])
@@ -107,9 +117,48 @@ class Plugin(indigo.PluginBase):
             if modules['id']==device.pluginProps['blind_id']:
                 self.debugLog("Found blind "+ device.pluginProps['blind_id'])
                 self.debugLog("Position is "+str(modules['current_position']))
-                device.updateStateOnServer(key='brightnessLevel', value=modules['current_position'])
+                self.debugLog("Target Position is "+str(modules['target_position']))
+                if modules['target_position'] != modules['current_position']:
+                    device.setErrorStateOnServer('Moving')
+                else:
+                    device.updateStateOnServer(key='brightnessLevel', value=modules['current_position'])
+                    device.setErrorStateOnServer('')
+
 
         return
+
+    def getBridge(self, home_id, blind_id):
+        self.debugLog("Getting bridgeID via API for "+blind_id)
+
+        url = 'https://app.velux-active.com/api/homestatus'
+
+        data = {
+            'access_token': self.pluginPrefs['access_token'],
+            'home_id': home_id
+
+        }
+        try:
+            response = requests.post(url, data=data)
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as err:
+            self.debugLog("HTTP Error when getting home information from Velux")
+        except Exception as err:
+            self.debugLog("Other error when getting home information Velux")
+
+        if response.status_code == 200:
+            self.debugLog(response.text)
+        else:
+            self.debugLog('Error getting home ID:' + response.text)
+            return module_list
+
+        response_json = response.json()
+        for modules in response_json['body']['home']['modules']:
+            self.debugLog(modules)
+            if modules['id'] == blind_id:
+                bridge=modules['bridge']
+                self.debugLog("Bridge is "+ modules['bridge'])
+        return bridge
+
 
     def token_check_valid(self):
         # Check if the access token needs to be refreshed, default expiry is 3 hours
@@ -260,8 +309,6 @@ class Plugin(indigo.PluginBase):
             errorsDict['velux_password'] = "Failed to Authenticate with Velux Servers, Check Password and Account Name"
             return (False, valuesDict, errorsDict)
 
-        #self.pluginPrefs['access_token'] = response_json['access_token']
-        #self.pluginPrefs['refresh_token'] = response_json['refresh_token']
 
         access_token_expires = str(elapsed + timedelta(seconds=10800))
         valuesDict['access_token']=response_json['access_token']
@@ -314,17 +361,24 @@ class Plugin(indigo.PluginBase):
         self.debugLog(home_list)
         return home_list
 
-    def getBlindID(self, filter="", valuesDict=None, typeId="", targetId=0):
-        self.debugLog("Getting homeID via API")
-        self.debugLog("Access Token is "+ self.pluginPrefs['access_token'])
+    def home_menu_changed(self, valuesDict, typeId, devId):
+        self.debugLog("Menu changed ????????????????????????????????????????????????????????????????????????")
+        self.debugLog(valuesDict)# do whatever you need to here
+        #   typeId is the device type specified in the Devices.xml
+        #   devId is the device ID - 0 if it's a new device
+        return valuesDict
 
+
+    def getBlindID(self, valuesDict, type_id="", dev_id="",target=""):
+        self.debugLog("Getting blindID via API ################################################################")
+        self.debugLog(valuesDict)
+        self.debugLog("waaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         module_list = []
         url = 'https://app.velux-active.com/api/homestatus'
 
         data = {
             'access_token': self.pluginPrefs['access_token'],
             'home_id': '641d7c1e5ff3394e2e07bb15'
-
         }
         try:
             response = requests.post(url, data=data)
@@ -345,11 +399,22 @@ class Plugin(indigo.PluginBase):
         self.debugLog(response_json['body']['home']['modules'])
         self.debugLog("iterated")
         for modules in response_json['body']['home']['modules']:
-            #module_list.append(home['id'])
             self.debugLog(modules)
             if modules['type']=='NXO':
                 module_list.append(modules['id'])
         return module_list
+
+
+
+        response_json = response.json()
+        self.debugLog("Modules")
+        self.debugLog(response_json['body']['home']['modules'])
+        for modules in response_json['body']['home']['modules']:
+            self.debugLog(modules)
+            if modules['blind_id']==blind_id:
+                bridge=modules['bridge']
+                self.debugLog("Bridge is "+ modules['bridge'])
+        return bridge
 
     def logDumpTokens(self):
         indigo.server.log("Showing Velux Active Token Status")
@@ -403,6 +468,180 @@ class Plugin(indigo.PluginBase):
         self.debugLog("Expiry is " + str(access_token_expires))
 
         return
+
+    def set_position(self, device, position):
+        url = "https://app.velux-active.com/syncapi/v1/setstate"
+
+        payload = json.dumps({
+            "home": {
+                "id": device.pluginProps['home_id'],
+                "modules": [
+                    {
+                        "bridge": device.pluginProps['bridge'],
+                        "id": device.pluginProps['blind_id'],
+                        "target_position": position
+                    }
+                ]
+            }
+        })
+
+        headers = {'Authorization': "Bearer {}".format(self.pluginPrefs['access_token']), 'Content-Type': 'application/json'}
+        response = requests.request("POST", url, headers=headers, data=payload)
+
+        self.debugLog(response.text)
+        if response.status_code != 200:
+            self.errorLog("Failed to Set Postion - API Error")
+            return False
+        else:
+            return True
+
+
+    ########################################
+    # Relay / Dimmer Action callback
+    ######################
+    def actionControlDevice(self, action, dev):
+        ###### TURN ON ######
+        if action.deviceAction == indigo.kDeviceAction.TurnOn:
+            send_success =self.set_position(dev,100)
+
+            if send_success:
+                # If success then log that the command was successfully sent.
+                self.logger.info(f"sent \"{dev.name}\" on")
+
+                # And then tell the Indigo Server to update the state.
+                #dev.updateStateOnServer("onOffState", True)
+                dev.setErrorStateOnServer('Moving')
+            else:
+                # Else log failure but do NOT update state on Indigo Server.
+                self.logger.error(f"send \"{dev.name}\" on failed")
+
+        ###### TURN OFF ######
+        elif action.deviceAction == indigo.kDeviceAction.TurnOff:
+
+
+            send_success = self.set_position(dev,0)
+
+            if send_success:
+                # If success then log that the command was successfully sent.
+                self.logger.info(f"sent \"{dev.name}\" off")
+
+                # And then tell the Indigo Server to update the state:
+                #dev.updateStateOnServer("onOffState", False)
+                dev.setErrorStateOnServer('Moving')
+
+            else:
+                # Else log failure but do NOT update state on Indigo Server.
+                self.logger.error(f"send \"{dev.name}\" off failed")
+
+
+
+        ###### TOGGLE ######
+        elif action.deviceAction == indigo.kDeviceAction.Toggle:
+            # Command hardware module (dev) to toggle here:
+            # ** IMPLEMENT ME **
+            new_on_state = not dev.onState
+            self.debugLog(new_on_state)
+            if new_on_state:
+                send_success=self.set_position(dev, 100)
+            else:
+                send_success=self.set_position(dev, 0)
+
+
+            if send_success:
+                # If success then log that the command was successfully sent.
+                self.logger.info(f"sent \"{dev.name}\" toggle")
+
+                # And then tell the Indigo Server to update the state:
+                dev.updateStateOnServer("onOffState", new_on_state)
+            else:
+                # Else log failure but do NOT update state on Indigo Server.
+                self.logger.error(f"send \"{dev.name}\" toggle failed")
+
+        ###### SET BRIGHTNESS ######
+        elif action.deviceAction == indigo.kDeviceAction.SetBrightness:
+            # Command hardware module (dev) to set brightness here:
+            new_brightness = action.actionValue
+
+
+            send_success = self.set_position(dev,new_brightness)
+
+            if send_success:
+                # If success then log that the command was successfully sent.
+                self.logger.info(f"sent \"{dev.name}\" set brightness to {new_brightness}")
+
+                # And then tell the Indigo Server to update the state:
+                #dev.updateStateOnServer("brightnessLevel", new_brightness)
+                dev.setErrorStateOnServer('Moving')
+
+            else:
+                # Else log failure but do NOT update state on Indigo Server.
+                self.logger.error(f"send \"{dev.name}\" set brightness to {new_brightness} failed")
+
+        ###### BRIGHTEN BY ######
+        elif action.deviceAction == indigo.kDeviceAction.BrightenBy:
+            # Command hardware module (dev) to do a relative brighten here:
+            # ** IMPLEMENT ME **
+            new_brightness = min(dev.brightness + action.actionValue, 100)
+            send_success = self.set_position(dev,new_brightness)
+
+            if send_success:
+                # If success then log that the command was successfully sent.
+                self.logger.info(f"sent \"{dev.name}\" brighten to {new_brightness}")
+
+                # And then tell the Indigo Server to update the state:
+                #dev.updateStateOnServer("brightnessLevel", new_brightness)
+                dev.setErrorStateOnServer('Moving')
+
+            else:
+                # Else log failure but do NOT update state on Indigo Server.
+                self.logger.error(f"send \"{dev.name}\" brighten to {new_brightness} failed")
+
+        ###### DIM BY ######
+        elif action.deviceAction == indigo.kDeviceAction.DimBy:
+            # Command hardware module (dev) to do a relative dim here:
+            # ** IMPLEMENT ME **
+            new_brightness = max(dev.brightness - action.actionValue, 0)
+            send_success = self.set_position(dev,new_brightness)
+
+            if send_success:
+                # If success then log that the command was successfully sent.
+                self.logger.info(f"sent \"{dev.name}\" dim to {new_brightness}")
+
+                # And then tell the Indigo Server to update the state:
+                dev.updateStateOnServer("brightnessLevel", new_brightness)
+            else:
+                # Else log failure but do NOT update state on Indigo Server.
+                self.logger.error(f"send \"{dev.name}\" dim to {new_brightness} failed")
+
+    ########################################
+    # General Action callback
+    ######################
+    def actionControlUniversal(self, action, dev):
+        ###### BEEP ######
+        if action.deviceAction == indigo.kUniversalAction.Beep:
+            # Beep the hardware module (dev) here:
+            # ** IMPLEMENT ME **
+            self.logger.info(f"sent \"{dev.name}\" beep request not implemented")
+
+        ###### ENERGY UPDATE ######
+        elif action.deviceAction == indigo.kUniversalAction.EnergyUpdate:
+            # Request hardware module (dev) for its most recent meter data here:
+            # ** IMPLEMENT ME **
+            self.logger.info(f"sent \"{dev.name}\" energy update request not implemented")
+
+        ###### ENERGY RESET ######
+        elif action.deviceAction == indigo.kUniversalAction.EnergyReset:
+            # Request that the hardware module (dev) reset its accumulative energy usage data here:
+            # ** IMPLEMENT ME **
+            self.logger.info(f"sent \"{dev.name}\" energy reset request not implemented")
+
+        ###### STATUS REQUEST ######
+        elif action.deviceAction == indigo.kUniversalAction.RequestStatus:
+            # Query hardware module (dev) for its current status here:
+            # ** IMPLEMENT ME **
+            self.logger.info(f"sent \"{dev.name}\" status request not implemented")
+
+
 
 
 

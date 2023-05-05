@@ -8,20 +8,13 @@
 			<Field id="home_id" type="menu" >
                 <Label>Select Home</Label>
                 <List class="self" filter="" method="getHomeID" dynamicReload="true"/>
+                <CallbackMethod>home_menu_changed</CallbackMethod>
             </Field>
 			<Field id="blind_id" type="menu" >
                 <Label>Select Blind</Label>
-                <List class="self" filter="" method="getBlindID" dynamicReload="true"/>
-            </Field>
-            </ConfigUI>
-<States>
-
-        <State id="homestatus_refresh" type="textfield">
-			<ValueType>String</ValueType>
-			<TriggerLabel>Last homestatus API Update</TriggerLabel>
-            <ControlPageLabel>Last homestatus API Updated</ControlPageLabel>
-		</State>
-    </States>
+                <List class="self" filter="" method="getBlindID" dynamicReload="true" />
+    </Field>
+    </ConfigUI>
 </Device>
 
 </Devices>
