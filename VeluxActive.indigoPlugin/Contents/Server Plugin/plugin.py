@@ -188,12 +188,9 @@ class Plugin(indigo.PluginBase):
             'client_secret': CLIENT_SECRET,
             'refresh_token': self.pluginPrefs['refresh_token']
         }
-        headers = {
-            'Content-Type': 'application/json'
-        }
         now = datetime.now()
         try:
-            response = requests.request("POST", url, headers=headers, data=payload)
+            response = requests.request("POST", url, data=payload)
             response.raise_for_status()
         except requests.exceptions.HTTPError as err:
             self.debugLog("HTTP Error when refreshing token")
@@ -208,7 +205,7 @@ class Plugin(indigo.PluginBase):
         else:
             self.pluginPrefs['access_token'] = response_json['access_token']
             self.pluginPrefs['access_token_expires'] = str(elapsed + timedelta(seconds=10800))
-            self.debugLog("Access Token is " + self.pluginPrefs['token'])
+            self.debugLog("Access Token is " + self.pluginPrefs['access_token'])
             self.debugLog("Access Token Expiry is " + str(self.pluginPrefs['access_token_expires']))
             return True
 

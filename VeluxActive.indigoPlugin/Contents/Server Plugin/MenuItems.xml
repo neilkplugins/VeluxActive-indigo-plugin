@@ -7,4 +7,8 @@
     <Name>Re-authenticate with Velux Active</Name>
         <CallbackMethod>reAutheticate</CallbackMethod>
 </MenuItem>
+    <MenuItem id="refreshtoken">
+    <Name>Re-fresh token manually (without re-autenticating) </Name>
+        <CallbackMethod>refresh_token</CallbackMethod>
+</MenuItem>
 </MenuItems>
