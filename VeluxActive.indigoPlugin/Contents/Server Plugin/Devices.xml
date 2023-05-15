@@ -9,10 +9,13 @@
                 <Label>Select Home</Label>
                 <List class="self" filter="" method="getHomeID" dynamicReload="true"/>
                 <CallbackMethod>home_menu_changed</CallbackMethod>
+
             </Field>
 			<Field id="blind_id" type="menu" >
                 <Label>Select Blind</Label>
                 <List class="self" filter="" method="getBlindID" dynamicReload="true" />
+                <CallbackMethod>home_menu_changed</CallbackMethod>
+
     </Field>
     </ConfigUI>
 </Device>

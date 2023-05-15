@@ -146,14 +146,14 @@ class Plugin(indigo.PluginBase):
             self.debugLog("Other error when getting home information Velux")
 
         if response.status_code == 200:
-            self.debugLog(response.text)
+            self.debugLog("Got response")
         else:
             self.debugLog('Error getting home ID:' + response.text)
             return module_list
 
         response_json = response.json()
         for modules in response_json['body']['home']['modules']:
-            self.debugLog(modules)
+            #self.debugLog(modules)
             if modules['id'] == blind_id:
                 bridge=modules['bridge']
                 self.debugLog("Bridge is "+ modules['bridge'])
@@ -328,9 +328,14 @@ class Plugin(indigo.PluginBase):
         self.debugLog(valuesDict)
         return (True, valuesDict)
 
+    def validateDeviceConfigUi(self, valuesDict, typeId, devId):
+        self.debugLog("Validating prefs")
+        self.debugLog(valuesDict)
+        return True
 
 
-    def getHomeID(self, filter="", valuesDict=None, typeId="", targetId=0):
+
+    def getHomeID(self, valuesDict, type_id="", dev_id="",target=""):
         self.debugLog("Getting homeID via API")
         home_list = []
         url = 'https://app.velux-active.com/api/gethomedata'
@@ -338,7 +343,7 @@ class Plugin(indigo.PluginBase):
         data = {
             'access_token': self.pluginPrefs['access_token']
         }
-        self.debugLog(data)
+        #self.debugLog(data)
         try:
             response = requests.post(url, data=data)
             response.raise_for_status()
@@ -359,23 +364,29 @@ class Plugin(indigo.PluginBase):
         return home_list
 
     def home_menu_changed(self, valuesDict, typeId, devId):
-        self.debugLog("Menu changed ????????????????????????????????????????????????????????????????????????")
+        self.debugLog("Menu changed")
         self.debugLog(valuesDict)# do whatever you need to here
         #   typeId is the device type specified in the Devices.xml
         #   devId is the device ID - 0 if it's a new device
+        
         return valuesDict
 
 
     def getBlindID(self, valuesDict, type_id="", dev_id="",target=""):
         self.debugLog("Getting blindID via API ################################################################")
-        self.debugLog(valuesDict)
+        self.debugLog(type_id)
         self.debugLog("waaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         module_list = []
+        if 'home_id' not in type_id:
+            self.debugLog("Oh bollocks - no home ID passed to me")
+            self.debugLog(type_id)
+            return module_list
+
         url = 'https://app.velux-active.com/api/homestatus'
 
         data = {
             'access_token': self.pluginPrefs['access_token'],
-            'home_id': '641d7c1e5ff3394e2e07bb15'
+            'home_id': type_id['home_id']
         }
         try:
             response = requests.post(url, data=data)
