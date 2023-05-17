@@ -21,24 +21,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "/Library/Application Support/Perceptive Automation/Indigo 2022.2/Plugins/VeluxActive.indigoPlugin",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "settings.editor.selected.configurable": "preferences.lookFeel",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Library/Application Support/Perceptive Automation/Indigo 2022.2/Plugins/VeluxActive.indigoPlugin&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
-      "JSON",
-      "JSON Lines"
+  &quot;keyToStringList&quot;: {
+    &quot;com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File&quot;: [
+      &quot;JSON&quot;,
+      &quot;JSON Lines&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Python Debug Server.Plugin Debug">
     <configuration name="Plugin Debug" type="PyRemoteDebugConfigurationType" factoryName="Python Remote Debug">
       <module name="GlowmarktCAD.indigoPlugin" />
@@ -114,7 +114,8 @@
       <workItem from="1682082832684" duration="2975000" />
       <workItem from="1682592023742" duration="25826000" />
       <workItem from="1682697840952" duration="13973000" />
-      <workItem from="1683109516799" duration="49266000" />
+      <workItem from="1683109516799" duration="50461000" />
+      <workItem from="1684333132273" duration="304000" />
     </task>
     <servers />
   </component>

@@ -368,7 +368,7 @@ class Plugin(indigo.PluginBase):
         self.debugLog(valuesDict)# do whatever you need to here
         #   typeId is the device type specified in the Devices.xml
         #   devId is the device ID - 0 if it's a new device
-        
+
         return valuesDict
 
 
