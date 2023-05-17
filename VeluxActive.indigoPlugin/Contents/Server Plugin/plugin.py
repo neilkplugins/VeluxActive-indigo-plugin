@@ -112,18 +112,19 @@ class Plugin(indigo.PluginBase):
 
 
         response_json = self.get_home_data(device.pluginProps['home_id'])
-
-        for modules in response_json['body']['home']['modules']:
-            if modules['id']==device.pluginProps['blind_id']:
-                self.debugLog("Found blind "+ device.pluginProps['blind_id'])
-                self.debugLog("Position is "+str(modules['current_position']))
-                self.debugLog("Target Position is "+str(modules['target_position']))
-                if modules['target_position'] != modules['current_position']:
-                    device.setErrorStateOnServer('Moving')
-                else:
-                    device.updateStateOnServer(key='brightnessLevel', value=modules['current_position'])
-                    device.setErrorStateOnServer('')
-
+        try:
+            for modules in response_json['body']['home']['modules']:
+                if modules['id']==device.pluginProps['blind_id']:
+                    self.debugLog("Found blind "+ device.pluginProps['blind_id'])
+                    self.debugLog("Position is "+str(modules['current_position']))
+                    self.debugLog("Target Position is "+str(modules['target_position']))
+                    if modules['target_position'] != modules['current_position']:
+                        device.setErrorStateOnServer('Moving')
+                    else:
+                        device.updateStateOnServer(key='brightnessLevel', value=modules['current_position'])
+                        device.setErrorStateOnServer('')
+        except:
+            device.setErrorStateOnServer('Update Error')
 
         return
 
