@@ -211,8 +211,13 @@ class Plugin(indigo.PluginBase):
 
 
     def get_home_data(self, home_id):
-        stored_home_status = json.loads(self.pluginPrefs['stored_home_status'])
-        stored_update_time = datetime.strptime(stored_home_status[home_id][0], '%Y-%m-%d %H:%M:%S.%f')
+        try:
+            stored_home_status = json.loads(self.pluginPrefs['stored_home_status'])
+            stored_update_time = datetime.strptime(stored_home_status[home_id][0], '%Y-%m-%d %H:%M:%S.%f')
+        except:
+            stored_home_status = ""
+            stored_update_time = datetime.now() - timedelta(minutes=30)
+
         time_now_plus_refresh = datetime.now()
         difference_in_seconds = (time_now_plus_refresh-stored_update_time).seconds
         self.debugLog("difference is "+str(difference_in_seconds))
@@ -291,6 +296,7 @@ class Plugin(indigo.PluginBase):
             response.raise_for_status()
         except requests.exceptions.HTTPError as err:
             self.debugLog("HTTP Error when authenticating to Velux")
+
         except Exception as err:
             self.debugLog("Other error when authenticating to Velux")
         self.debugLog(response)
@@ -320,10 +326,7 @@ class Plugin(indigo.PluginBase):
         self.debugLog("Expiry is " + str(access_token_expires))
 
 
-        indigo.server.log("Showing Velux Active Token Status after Config")
-        indigo.server.log("Access Token is " + self.pluginPrefs['access_token'])
-        indigo.server.log("Refresh Token is " + self.pluginPrefs['refresh_token'])
-        indigo.server.log("Expiry is " + str(access_token_expires))
+        indigo.server.log("Velux Active Token Success")
         self.debugLog("Exit Dict")
         self.debugLog(valuesDict)
         return (True, valuesDict)
