@@ -8,7 +8,7 @@
 	<Field id="velux_password" type="textfield" secure="true">
 		<Label>Velux Active Account Password</Label>
 	</Field>
-	<Field id="refresh_frequency" type="textfield" defaultValue="60">
+	<Field id="refresh_frequency" type="textfield" defaultValue="10">
 	<Label>Enter Polling Frequency in Seconds:</Label>
 	</Field>
 	<Field id="Label2" type="label" fontSize="small" fontColor="darkgray"><Label>This is the time between updating devices using the API</Label>
