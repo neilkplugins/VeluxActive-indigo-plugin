@@ -119,9 +119,13 @@ class Plugin(indigo.PluginBase):
                     self.debugLog("Position is "+str(modules['current_position']))
                     self.debugLog("Target Position is "+str(modules['target_position']))
                     if modules['target_position'] != modules['current_position']:
-                        device.setErrorStateOnServer('Moving')
+                        if modules['target_position'] > modules['current_position']:
+                            device.updateStateOnServer(key='brightnessLevel', value=modules['target_position'], uiValue="Opening")
+                        else:
+                            device.updateStateOnServer(key='brightnessLevel', value=modules['target_position'], uiValue="Closing")
+
                     else:
-                        device.updateStateOnServer(key='brightnessLevel', value=modules['current_position'])
+                        device.updateStateOnServer(key='brightnessLevel', value=modules['current_position'], uiValue=str(modules['current_position']))
                         device.setErrorStateOnServer('')
         except:
             device.setErrorStateOnServer('Update Error')
@@ -347,7 +351,6 @@ class Plugin(indigo.PluginBase):
         data = {
             'access_token': self.pluginPrefs['access_token']
         }
-        #self.debugLog(data)
         try:
             response = requests.post(url, data=data)
             response.raise_for_status()
@@ -377,9 +380,7 @@ class Plugin(indigo.PluginBase):
 
 
     def getBlindID(self, valuesDict, type_id="", dev_id="",target=""):
-        self.debugLog("Getting blindID via API ################################################################")
         self.debugLog(type_id)
-        self.debugLog("waaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         module_list = []
         if 'home_id' not in type_id:
             self.debugLog("Oh bollocks - no home ID passed to me")
@@ -521,8 +522,8 @@ class Plugin(indigo.PluginBase):
                 self.logger.info(f"sent \"{dev.name}\" on")
 
                 # And then tell the Indigo Server to update the state.
-                #dev.updateStateOnServer("onOffState", True)
-                dev.setErrorStateOnServer('Moving')
+                dev.updateStateOnServer(key='brightnessLevel', value=100, uiValue="Opening")
+
             else:
                 # Else log failure but do NOT update state on Indigo Server.
                 self.logger.error(f"send \"{dev.name}\" on failed")
@@ -538,8 +539,8 @@ class Plugin(indigo.PluginBase):
                 self.logger.info(f"sent \"{dev.name}\" off")
 
                 # And then tell the Indigo Server to update the state:
-                #dev.updateStateOnServer("onOffState", False)
-                dev.setErrorStateOnServer('Moving')
+                dev.updateStateOnServer(key='brightnessLevel', value=0, uiValue="Closing")
+
 
             else:
                 # Else log failure but do NOT update state on Indigo Server.
@@ -574,6 +575,11 @@ class Plugin(indigo.PluginBase):
             # Command hardware module (dev) to set brightness here:
             new_brightness = action.actionValue
 
+            if new_brightness > dev.states['brightnessLevel']:
+                ui_state = "Opening"
+            else:
+                ui_state = "Closing"
+
 
             send_success = self.set_position(dev,new_brightness)
 
@@ -583,7 +589,9 @@ class Plugin(indigo.PluginBase):
 
                 # And then tell the Indigo Server to update the state:
                 #dev.updateStateOnServer("brightnessLevel", new_brightness)
-                dev.setErrorStateOnServer('Moving')
+                #dev.setErrorStateOnServer('Moving')
+                dev.updateStateOnServer(key='brightnessLevel', value=new_brightness, uiValue=ui_state)
+
 
             else:
                 # Else log failure but do NOT update state on Indigo Server.
@@ -594,6 +602,10 @@ class Plugin(indigo.PluginBase):
             # Command hardware module (dev) to do a relative brighten here:
             # ** IMPLEMENT ME **
             new_brightness = min(dev.brightness + action.actionValue, 100)
+            if new_brightness > dev.states['brightnessLevel']:
+                ui_state = "Opening"
+            else:
+                ui_state = "Closing"
             send_success = self.set_position(dev,new_brightness)
 
             if send_success:
@@ -602,7 +614,9 @@ class Plugin(indigo.PluginBase):
 
                 # And then tell the Indigo Server to update the state:
                 #dev.updateStateOnServer("brightnessLevel", new_brightness)
-                dev.setErrorStateOnServer('Moving')
+                #dev.setErrorStateOnServer('Moving')
+                dev.updateStateOnServer(key='brightnessLevel', value=new_brightness, uiValue=ui_state)
+
 
             else:
                 # Else log failure but do NOT update state on Indigo Server.
@@ -613,6 +627,10 @@ class Plugin(indigo.PluginBase):
             # Command hardware module (dev) to do a relative dim here:
             # ** IMPLEMENT ME **
             new_brightness = max(dev.brightness - action.actionValue, 0)
+            if new_brightness > dev.states['brightnessLevel']:
+                ui_state = "Opening"
+            else:
+                ui_state = "Closing"
             send_success = self.set_position(dev,new_brightness)
 
             if send_success:
@@ -620,7 +638,8 @@ class Plugin(indigo.PluginBase):
                 self.logger.info(f"sent \"{dev.name}\" dim to {new_brightness}")
 
                 # And then tell the Indigo Server to update the state:
-                dev.updateStateOnServer("brightnessLevel", new_brightness)
+                dev.updateStateOnServer(key='brightnessLevel', value=new_brightness, uiValue=ui_state)
+
             else:
                 # Else log failure but do NOT update state on Indigo Server.
                 self.logger.error(f"send \"{dev.name}\" dim to {new_brightness} failed")
