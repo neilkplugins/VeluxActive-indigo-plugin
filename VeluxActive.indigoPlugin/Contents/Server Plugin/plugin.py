@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 ####################
-# Copyright (c) 2020 neilk
 #
 # Based on the sample dimmer plugin
-# Velux Active integration based on the documentation at https://github.com/nougad/velux-cli/blob/master/velux-protocol.md
-# Plugin is provided on an as is basis, use at your own risk and it is not supported or endorsed by Velux or any of their affiliates
+# Velux Active integration used the documentation at https://github.com/nougad/velux-cli/blob/master/velux-protocol.md
+# Plugin is provided on an as is basis, use at your own risk
+# and it is not supported or endorsed by Velux or any of their affiliates
 
 ################################################################################
 # Imports
@@ -14,13 +14,13 @@ import indigo
 import requests
 import json
 # import time
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 
 ################################################################################
 # Globals
 ################################################################################
 
-# Note these were not reverse engineered, but obtained in the public domain albeit not published by Velux, use at your own risk
+# These were not reverse engineered, but obtained in the public domain but not published by Velux, use at your own risk
 CLIENT_ID = '5931426da127d981e76bdd3f'
 CLIENT_SECRET = '6ae2d89d15e767ae5c56b456b452d319'
 
@@ -28,9 +28,6 @@ CLIENT_SECRET = '6ae2d89d15e767ae5c56b456b452d319'
 ############################
 # API Functions
 #############################
-
-
-
 
 
 ################################################################################
@@ -82,12 +79,12 @@ class Plugin(indigo.PluginBase):
     ########################################
     def update(self, device):
         device.stateListOrDisplayStateIdChanged()
-        self.debugLog("Updating Velux Device "+device.name)
+        self.debugLog("Updating Velux Device " + device.name)
         # Check if bridge ID is set, if not update it
         if 'bridge' not in device.pluginProps:
             try:
                 newProps = device.pluginProps
-                newProps['bridge'] = self.getBridge(device.pluginProps['home_id'],device.pluginProps['blind_id'])
+                newProps['bridge'] = self.getBridge(device.pluginProps['home_id'], device.pluginProps['blind_id'])
                 device.replacePluginPropsOnServer(newProps)
             except:
                 self.debugLog("Blind ID Not yet Set")
@@ -106,26 +103,28 @@ class Plugin(indigo.PluginBase):
             newProps['address'] = device.pluginProps['blind_id']
             device.replacePluginPropsOnServer(newProps)
         self.debugLog("Getting device state")
-        self.debugLog("Home ID is "+ device.pluginProps['home_id'])
-        self.debugLog("Blind ID is "+ device.pluginProps['blind_id'])
+        self.debugLog("Home ID is " + device.pluginProps['home_id'])
+        self.debugLog("Blind ID is " + device.pluginProps['blind_id'])
         self.debugLog("Bridge ID is " + device.pluginProps['bridge'])
-
 
         response_json = self.get_home_data(device.pluginProps['home_id'])
         try:
             for modules in response_json['body']['home']['modules']:
-                if modules['id']==device.pluginProps['blind_id']:
-                    self.debugLog("Found blind "+ device.pluginProps['blind_id'])
-                    self.debugLog("Position is "+str(modules['current_position']))
-                    self.debugLog("Target Position is "+str(modules['target_position']))
+                if modules['id'] == device.pluginProps['blind_id']:
+                    self.debugLog("Found blind " + device.pluginProps['blind_id'])
+                    self.debugLog("Position is " + str(modules['current_position']))
+                    self.debugLog("Target Position is " + str(modules['target_position']))
                     if modules['target_position'] != modules['current_position']:
                         if modules['target_position'] > modules['current_position']:
-                            device.updateStateOnServer(key='brightnessLevel', value=modules['target_position'], uiValue="Opening")
+                            device.updateStateOnServer(key='brightnessLevel', value=modules['target_position'],
+                                                       uiValue="Opening")
                         else:
-                            device.updateStateOnServer(key='brightnessLevel', value=modules['target_position'], uiValue="Closing")
+                            device.updateStateOnServer(key='brightnessLevel', value=modules['target_position'],
+                                                       uiValue="Closing")
 
                     else:
-                        device.updateStateOnServer(key='brightnessLevel', value=modules['current_position'], uiValue=str(modules['current_position']))
+                        device.updateStateOnServer(key='brightnessLevel', value=modules['current_position'],
+                                                   uiValue=str(modules['current_position']))
                         device.setErrorStateOnServer('')
         except:
             device.setErrorStateOnServer('Update Error')
@@ -133,7 +132,7 @@ class Plugin(indigo.PluginBase):
         return
 
     def getBridge(self, home_id, blind_id):
-        self.debugLog("Getting bridgeID via API for "+blind_id)
+        self.debugLog("Getting bridgeID via API for " + blind_id)
 
         url = 'https://app.velux-active.com/api/homestatus'
 
@@ -158,12 +157,11 @@ class Plugin(indigo.PluginBase):
 
         response_json = response.json()
         for modules in response_json['body']['home']['modules']:
-            #self.debugLog(modules)
+            # self.debugLog(modules)
             if modules['id'] == blind_id:
-                bridge=modules['bridge']
-                self.debugLog("Bridge is "+ modules['bridge'])
+                bridge = modules['bridge']
+                self.debugLog("Bridge is " + modules['bridge'])
         return bridge
-
 
     def token_check_valid(self):
         # Check if the access token needs to be refreshed, default expiry is 3 hours
@@ -175,14 +173,12 @@ class Plugin(indigo.PluginBase):
         else:
             self.debugLog("Refresh AccessToken Now - 5 Minutes or less remaining valid")
             return False
-        return
-
 
     def refresh_token(self):
         expiry_time = datetime.strptime(self.pluginPrefs['access_token_expires'], '%Y-%m-%d %H:%M:%S.%f')
         if expiry_time < datetime.now():
             self.debugLog("Token has already expired - Re-Autenticating")
-            self.reAutheticate()
+            self.reAuthenticate()
             return
         self.debugLog("Refreshing Access token")
         url = "https://app.velux-active.com/oauth2/token"
@@ -214,7 +210,6 @@ class Plugin(indigo.PluginBase):
             self.debugLog("Access Token Expiry is " + str(self.pluginPrefs['access_token_expires']))
             return True
 
-
     def get_home_data(self, home_id):
         try:
             stored_home_status = json.loads(self.pluginPrefs['stored_home_status'])
@@ -224,12 +219,12 @@ class Plugin(indigo.PluginBase):
             stored_update_time = datetime.now() - timedelta(minutes=30)
 
         time_now_plus_refresh = datetime.now()
-        difference_in_seconds = (time_now_plus_refresh-stored_update_time).seconds
-        self.debugLog("difference is "+str(difference_in_seconds))
+        difference_in_seconds = (time_now_plus_refresh - stored_update_time).seconds
+        self.debugLog("difference is " + str(difference_in_seconds))
         if home_id in stored_home_status:
             if difference_in_seconds < int(self.pluginPrefs['refresh_frequency']):
                 self.debugLog("No need to refresh API data")
-                #return the stored home status json, don't make a new api call as this is still fresh
+                # return the stored home status json, don't make a new api call as this is still fresh
                 return stored_home_status[home_id][1]
             else:
                 self.debugLog("Making new API call")
@@ -259,14 +254,10 @@ class Plugin(indigo.PluginBase):
         elapsed = now + response.elapsed
         response_json = response.json()
 
-        stored_home_status = { home_id: [str(elapsed), response_json]}
-        self.pluginPrefs['stored_home_status']=json.dumps(stored_home_status)
-
+        stored_home_status = {home_id: [str(elapsed), response_json]}
+        self.pluginPrefs['stored_home_status'] = json.dumps(stored_home_status)
 
         return response_json
-
-
-
 
     ########################################
     # UI Validate, Plugin Preferences
@@ -276,10 +267,10 @@ class Plugin(indigo.PluginBase):
         self.debugLog(valuesDict)
         self.debugLog("Initial Dict")
         if not (valuesDict['velux_account']):
-             self.errorLog("Account Email Cannot Be Empty")
-             errorsDict = indigo.Dict()
-             errorsDict['velux_account'] = "Velux Account Cannot Be Empty"
-             return False, valuesDict, errorsDict
+            self.errorLog("Account Email Cannot Be Empty")
+            errorsDict = indigo.Dict()
+            errorsDict['velux_account'] = "Velux Account Cannot Be Empty"
+            return False, valuesDict, errorsDict
         if not (valuesDict['velux_password']):
             self.errorLog("Password Cannot Be Empty")
             errorsDict = indigo.Dict()
@@ -309,27 +300,21 @@ class Plugin(indigo.PluginBase):
         elapsed = now + response.elapsed
         self.debugLog(response_json)
 
-
-
         if response.status_code != 200:
             self.errorLog("Failed to Authenticate with Velux Servers, Check Password and Account Name")
             errorsDict = indigo.Dict()
             errorsDict['velux_password'] = "Failed to Authenticate with Velux Servers, Check Password and Account Name"
             return (False, valuesDict, errorsDict)
 
-
         access_token_expires = str(elapsed + timedelta(seconds=10800))
-        valuesDict['access_token']=response_json['access_token']
-        valuesDict['refresh_token']=response_json['refresh_token']
-        valuesDict['access_token']=response_json['access_token']
-        valuesDict['access_token_expires']=access_token_expires
-
-
+        valuesDict['access_token'] = response_json['access_token']
+        valuesDict['refresh_token'] = response_json['refresh_token']
+        valuesDict['access_token'] = response_json['access_token']
+        valuesDict['access_token_expires'] = access_token_expires
 
         self.debugLog("Access Token is " + response_json['access_token'])
         self.debugLog("Refresh Token is " + response_json['refresh_token'])
         self.debugLog("Expiry is " + str(access_token_expires))
-
 
         indigo.server.log("Velux Active Token Success")
         self.debugLog("Exit Dict")
@@ -341,9 +326,7 @@ class Plugin(indigo.PluginBase):
         self.debugLog(valuesDict)
         return True
 
-
-
-    def getHomeID(self, valuesDict, type_id="", dev_id="",target=""):
+    def getHomeID(self, valuesDict, type_id="", dev_id="", target=""):
         self.debugLog("Getting homeID via API")
         home_list = []
         url = 'https://app.velux-active.com/api/gethomedata'
@@ -366,20 +349,19 @@ class Plugin(indigo.PluginBase):
             return home_list
         response_json = response.json()
         for homes in response_json['body']['homes']:
-            home_list.append((homes['id'],homes['name']))
+            home_list.append((homes['id'], homes['name']))
         self.debugLog(home_list)
         return home_list
 
     def home_menu_changed(self, valuesDict, typeId, devId):
         self.debugLog("Menu changed")
-        self.debugLog(valuesDict)# do whatever you need to here
+        self.debugLog(valuesDict)  # do whatever you need to here
         #   typeId is the device type specified in the Devices.xml
         #   devId is the device ID - 0 if it's a new device
 
         return valuesDict
 
-
-    def getBlindID(self, valuesDict, type_id="", dev_id="",target=""):
+    def getBlindID(self, valuesDict, type_id="", dev_id="", target=""):
         self.debugLog(type_id)
         module_list = []
         if 'home_id' not in type_id:
@@ -413,21 +395,9 @@ class Plugin(indigo.PluginBase):
         self.debugLog("iterated")
         for modules in response_json['body']['home']['modules']:
             self.debugLog(modules)
-            if modules['type']=='NXO':
+            if modules['type'] == 'NXO':
                 module_list.append(modules['id'])
         return module_list
-
-
-
-        response_json = response.json()
-        self.debugLog("Modules")
-        self.debugLog(response_json['body']['home']['modules'])
-        for modules in response_json['body']['home']['modules']:
-            self.debugLog(modules)
-            if modules['blind_id']==blind_id:
-                bridge=modules['bridge']
-                self.debugLog("Bridge is "+ modules['bridge'])
-        return bridge
 
     def logDumpTokens(self):
         indigo.server.log("Showing Velux Active Token Status")
@@ -441,7 +411,7 @@ class Plugin(indigo.PluginBase):
 
         return
 
-    def reAutheticate(self):
+    def reAuthenticate(self):
         url = "https://app.velux-active.com/oauth2/token"
         data = {
             'grant_type': 'password',
@@ -498,7 +468,8 @@ class Plugin(indigo.PluginBase):
             }
         })
 
-        headers = {'Authorization': "Bearer {}".format(self.pluginPrefs['access_token']), 'Content-Type': 'application/json'}
+        headers = {'Authorization': "Bearer {}".format(self.pluginPrefs['access_token']),
+                   'Content-Type': 'application/json'}
         response = requests.request("POST", url, headers=headers, data=payload)
 
         self.debugLog(response.text)
@@ -508,14 +479,13 @@ class Plugin(indigo.PluginBase):
         else:
             return True
 
-
     ########################################
     # Relay / Dimmer Action callback
     ######################
     def actionControlDevice(self, action, dev):
         ###### TURN ON ######
         if action.deviceAction == indigo.kDeviceAction.TurnOn:
-            send_success =self.set_position(dev,100)
+            send_success = self.set_position(dev, 100)
 
             if send_success:
                 # If success then log that the command was successfully sent.
@@ -531,8 +501,7 @@ class Plugin(indigo.PluginBase):
         ###### TURN OFF ######
         elif action.deviceAction == indigo.kDeviceAction.TurnOff:
 
-
-            send_success = self.set_position(dev,0)
+            send_success = self.set_position(dev, 0)
 
             if send_success:
                 # If success then log that the command was successfully sent.
@@ -555,10 +524,9 @@ class Plugin(indigo.PluginBase):
             new_on_state = not dev.onState
             self.debugLog(new_on_state)
             if new_on_state:
-                send_success=self.set_position(dev, 100)
+                send_success = self.set_position(dev, 100)
             else:
-                send_success=self.set_position(dev, 0)
-
+                send_success = self.set_position(dev, 0)
 
             if send_success:
                 # If success then log that the command was successfully sent.
@@ -580,16 +548,15 @@ class Plugin(indigo.PluginBase):
             else:
                 ui_state = "Closing"
 
-
-            send_success = self.set_position(dev,new_brightness)
+            send_success = self.set_position(dev, new_brightness)
 
             if send_success:
                 # If success then log that the command was successfully sent.
                 self.logger.info(f"sent \"{dev.name}\" set brightness to {new_brightness}")
 
                 # And then tell the Indigo Server to update the state:
-                #dev.updateStateOnServer("brightnessLevel", new_brightness)
-                #dev.setErrorStateOnServer('Moving')
+                # dev.updateStateOnServer("brightnessLevel", new_brightness)
+                # dev.setErrorStateOnServer('Moving')
                 dev.updateStateOnServer(key='brightnessLevel', value=new_brightness, uiValue=ui_state)
 
 
@@ -606,15 +573,15 @@ class Plugin(indigo.PluginBase):
                 ui_state = "Opening"
             else:
                 ui_state = "Closing"
-            send_success = self.set_position(dev,new_brightness)
+            send_success = self.set_position(dev, new_brightness)
 
             if send_success:
                 # If success then log that the command was successfully sent.
                 self.logger.info(f"sent \"{dev.name}\" brighten to {new_brightness}")
 
                 # And then tell the Indigo Server to update the state:
-                #dev.updateStateOnServer("brightnessLevel", new_brightness)
-                #dev.setErrorStateOnServer('Moving')
+                # dev.updateStateOnServer("brightnessLevel", new_brightness)
+                # dev.setErrorStateOnServer('Moving')
                 dev.updateStateOnServer(key='brightnessLevel', value=new_brightness, uiValue=ui_state)
 
 
@@ -631,7 +598,7 @@ class Plugin(indigo.PluginBase):
                 ui_state = "Opening"
             else:
                 ui_state = "Closing"
-            send_success = self.set_position(dev,new_brightness)
+            send_success = self.set_position(dev, new_brightness)
 
             if send_success:
                 # If success then log that the command was successfully sent.
@@ -671,8 +638,3 @@ class Plugin(indigo.PluginBase):
             # Query hardware module (dev) for its current status here:
             # ** IMPLEMENT ME **
             self.logger.info(f"sent \"{dev.name}\" status request not implemented")
-
-
-
-
-

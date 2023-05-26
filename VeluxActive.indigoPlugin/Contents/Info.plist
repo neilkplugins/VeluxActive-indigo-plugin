@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>PluginVersion</key>
-	<string>2023.0.4</string>
+	<string>2023.0.5</string>
 	<key>ServerApiVersion</key>
 	<string>3.0</string>
 	<key>IwsApiVersion</key>
@@ -18,7 +18,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>https://github.com/neilkplugins/VeluxActive-indigo-plugin/wiki</string>
+			<string>https://forums.indigodomo.com/viewforum.php?f=390</string>
 		</dict>
 	</array>
 </dict>
