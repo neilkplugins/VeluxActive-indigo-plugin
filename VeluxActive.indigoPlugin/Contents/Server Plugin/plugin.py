@@ -255,6 +255,7 @@ class Plugin(indigo.PluginBase):
         response_json = response.json()
 
         stored_home_status = {home_id: [str(elapsed), response_json]}
+        self.debugLog(stored_home_status)
         self.pluginPrefs['stored_home_status'] = json.dumps(stored_home_status)
 
         return response_json
